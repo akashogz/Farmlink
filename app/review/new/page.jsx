@@ -4,6 +4,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 
+export const dynamic = "force-dynamic";
+
 function StarPicker({ value, onChange }) {
   const [hovered, setHovered] = useState(0);
   return (

@@ -1,10 +1,8 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-
-export const dynamic = "force-dynamic";
 
 function StarPicker({ value, onChange }) {
   const [hovered, setHovered] = useState(0);
@@ -28,7 +26,7 @@ function StarPicker({ value, onChange }) {
 
 const LABELS = { 1: 'Poor', 2: 'Fair', 3: 'Good', 4: 'Very Good', 5: 'Excellent' };
 
-export default function NewReviewPage() {
+function NewReviewPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const bookingId = searchParams.get('bookingId');
@@ -189,5 +187,13 @@ export default function NewReviewPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function NewReviewPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#f7f5f0] flex items-center justify-center"><p className="text-gray-500">Loading...</p></div>}>
+      <NewReviewPageInner />
+    </Suspense>
   );
 }

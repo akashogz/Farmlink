@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 
+export const dynamic = 'force-dynamic';
+
 const CATEGORY_ICONS = {
   tractor: '🚜', harvester: '🌾', irrigation: '💧', plowing: '⛏️',
   seeding: '🌱', spraying: '🪣', other: '🔧',
@@ -71,19 +73,15 @@ function ImageGallery({ images }) {
   );
 }
 
-// Simple QR code SVG generator using encoded URL pattern
 function QRCodeDisplay({ bookingId, qrToken, borrowerName, equipmentTitle }) {
-  // We encode booking info as a visual QR-like grid (deterministic from token)
   const size = 21;
   const cells = [];
-  // Generate deterministic pattern from token
   const seed = qrToken || bookingId;
   for (let i = 0; i < size * size; i++) {
     const charIdx = i % seed.length;
     const val = seed.charCodeAt(charIdx);
     cells.push((val + i * 7 + Math.floor(i / size) * 3) % 3 === 0);
   }
-  // Finder patterns
   const isFinderPattern = (r, c) => {
     const inTopLeft = r < 7 && c < 7;
     const inTopRight = r < 7 && c >= size - 7;
@@ -117,14 +115,13 @@ function QRCodeDisplay({ bookingId, qrToken, borrowerName, equipmentTitle }) {
   );
 }
 
-// Payment modal
 function PaymentModal({ booking, onClose, onSuccess }) {
   const [method, setMethod] = useState('upi');
   const [upiId, setUpiId] = useState('');
   const [cardNum, setCardNum] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
-  const [step, setStep] = useState('form'); // form | processing | done
+  const [step, setStep] = useState('form');
   const [error, setError] = useState('');
 
   const totalPayable = booking.totalPrice + (booking.depositAmount || 0);
@@ -138,7 +135,6 @@ function PaymentModal({ booking, onClose, onSuccess }) {
       if (cvv.length < 3) { setError('Enter valid CVV'); return; }
     }
     setStep('processing');
-    // Simulate 2s payment processing
     await new Promise(r => setTimeout(r, 2000));
     try {
       const token = localStorage.getItem('token');
@@ -199,7 +195,6 @@ function PaymentModal({ booking, onClose, onSuccess }) {
             </div>
             <div className="p-5">
               {error && <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg mb-4">{error}</div>}
-              {/* Payment method tabs */}
               <div className="flex gap-2 mb-4">
                 {[['upi', '📱 UPI'], ['card', '💳 Card'], ['cash', '💵 Cash on Delivery']].map(([v, l]) => (
                   <button key={v} onClick={() => setMethod(v)}
@@ -261,7 +256,6 @@ function PaymentModal({ booking, onClose, onSuccess }) {
   );
 }
 
-// Blocked dates calendar
 function BookedDatesCalendar({ bookedRanges }) {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
@@ -326,20 +320,20 @@ export default function EquipmentDetailPage() {
   const [booking, setBooking] = useState({ startDate: '', endDate: '', notes: '' });
   const [bookingLoading, setBookingLoading] = useState(false);
   const [bookingError, setBookingError] = useState('');
-  const [createdBooking, setCreatedBooking] = useState(null); // booking object after creation
+  const [createdBooking, setCreatedBooking] = useState(null);
   const [showPayment, setShowPayment] = useState(false);
-  const [paidBooking, setPaidBooking] = useState(null); // booking after payment
+  const [paidBooking, setPaidBooking] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [bookedRanges, setBookedRanges] = useState([]);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    // Silently load current user if logged in — no redirect
     const user = JSON.parse(localStorage.getItem('user') || 'null');
-    if (!token) { router.push('/login'); return; }
-    setCurrentUser(user);
+    if (user) setCurrentUser(user);
 
+    // Always fetch equipment data, login not required to view
     Promise.all([
       fetch(`/api/equipment/${params.id}`).then(r => r.json()),
       fetch(`/api/reviews?equipmentId=${params.id}`).then(r => r.json()),
@@ -349,7 +343,7 @@ export default function EquipmentDetailPage() {
       setReviews(rData.reviews || []);
       setBookedRanges(bData.bookings || []);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [params.id, router]);
+  }, [params.id]);
 
   const totalDays = booking.startDate && booking.endDate
     ? Math.max(0, Math.ceil((new Date(booking.endDate) - new Date(booking.startDate)) / 86400000))
@@ -378,11 +372,18 @@ export default function EquipmentDetailPage() {
 
   const handleRequestBooking = async (e) => {
     e.preventDefault();
+
+    // Only check login when they actually try to book
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push(`/login?redirect=/equipment/${params.id}`);
+      return;
+    }
+
     if (dateConflict) { setBookingError('Selected dates overlap with existing bookings.'); return; }
     setBookingError('');
     setBookingLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const res = await fetch('/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -508,7 +509,6 @@ export default function EquipmentDetailPage() {
               </div>
             </div>
 
-            {/* Availability Calendar */}
             <div className="card p-6">
               <h2 className="font-semibold text-gray-900 mb-4">📅 Availability Calendar</h2>
               <p className="text-sm text-gray-500 mb-4">Dates in red are already booked. Choose available dates below.</p>
@@ -559,7 +559,6 @@ export default function EquipmentDetailPage() {
                 )}
               </div>
 
-              {/* Show QR after payment */}
               {paidBooking ? (
                 <div className="text-center py-2">
                   <div className="text-3xl mb-2">🎉</div>
@@ -621,7 +620,6 @@ export default function EquipmentDetailPage() {
                       onChange={e => setBooking({ ...booking, notes: e.target.value })} />
                   </div>
 
-                  {/* Add-ons selection */}
                   {equipment.addOns && equipment.addOns.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -678,7 +676,12 @@ export default function EquipmentDetailPage() {
                     className="btn-primary w-full py-3">
                     {bookingLoading ? 'Creating Booking...' : '💳 Book & Pay'}
                   </button>
-                  <p className="text-xs text-gray-400 text-center">You&apos;ll be prompted to pay after booking</p>
+                  {!currentUser && (
+                    <p className="text-xs text-gray-400 text-center">You&apos;ll need to log in to complete your booking</p>
+                  )}
+                  {currentUser && (
+                    <p className="text-xs text-gray-400 text-center">You&apos;ll be prompted to pay after booking</p>
+                  )}
                 </form>
               )}
             </div>
